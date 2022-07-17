@@ -4,6 +4,8 @@ Yes, I know the code is a clusterfuck.
 
 ## Configuration
 
+To run, you must have a config.yml.
+
 Here's an example configuration for HeavyNode:
 ```yaml
 api-url: https://control.heavynode.com
