@@ -3,14 +3,13 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/gorilla/websocket"
-	"gopkg.in/yaml.v2"
 )
 
 type WsCredentials struct {
@@ -25,40 +24,32 @@ type DataMessage struct {
 	Args  []string `json:"args"`
 }
 
-type Config struct {
-	ApiUrl   string `yaml:"api-url"`
-	ApiKey   string `yaml:"api-key"`
-	ServerId string `yaml:"server-id"`
-}
-
 func main() {
 	var c *websocket.Conn
 
-	buf, err := ioutil.ReadFile("config.yml")
+	apiUrl := flag.String("url", "https://control.heavynode.com", "The API URL")
+	apiKey := flag.String("key", "", "Your Pterodactyl API key")
+	serverId := flag.String("server", "", "Your server ID (get it from the network tab)")
+	noLogs := flag.Bool("nologs", false, "Don't print server logs")
+	flag.Parse()
 
-	if err != nil {
-		log.Println("failed to read config.yml")
-		return
+	if *apiKey == "" {
+		panic("Missing API key")
 	}
 
-	var config Config
-
-	if err = yaml.Unmarshal(buf, &config); err != nil {
-		log.Println("failed to parse config")
-		return
+	if *serverId == "" {
+		panic("Missing server ID")
 	}
-
-	nologs := len(os.Args) >= 2 && os.Args[1] == "nologs"
 
 	go func() {
 		for {
-			req, err := http.NewRequest("GET", config.ApiUrl+"/api/client/servers/"+config.ServerId+"/websocket", nil)
+			req, err := http.NewRequest("GET", *apiUrl+"/api/client/servers/"+*serverId+"/websocket", nil)
 
 			if err != nil {
 				panic(err)
 			}
 
-			req.Header.Add("Authorization", "Bearer "+config.ApiKey)
+			req.Header.Add("Authorization", "Bearer "+*apiKey)
 
 			res, err := http.DefaultClient.Do(req)
 
@@ -82,7 +73,7 @@ func main() {
 			log.Println("got ws url: " + credentials.Data.Socket)
 
 			h := http.Header{}
-			h.Add("Origin", config.ApiUrl)
+			h.Add("Origin", *apiUrl)
 
 			c, _, err = websocket.DefaultDialer.Dial(credentials.Data.Socket, h)
 
@@ -115,7 +106,7 @@ func main() {
 					panic(err)
 				}
 
-				if !nologs && message.Event == "console output" {
+				if !*noLogs && message.Event == "console output" {
 					log.Println(message.Args[0])
 				} else if message.Event == "token expiring" {
 					break
