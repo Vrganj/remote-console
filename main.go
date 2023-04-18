@@ -48,6 +48,8 @@ func main() {
 		return
 	}
 
+	nologs := len(os.Args) >= 2 && os.Args[1] == "nologs"
+
 	go func() {
 		for {
 			req, err := http.NewRequest("GET", config.ApiUrl+"/api/client/servers/"+config.ServerId+"/websocket", nil)
@@ -113,7 +115,7 @@ func main() {
 					panic(err)
 				}
 
-				if message.Event == "console output" {
+				if !nologs && message.Event == "console output" {
 					log.Println(message.Args[0])
 				} else if message.Event == "token expiring" {
 					break
